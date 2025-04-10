@@ -11,6 +11,7 @@ import Login from "./pages/Login";
 import Teacher from "./pages/Teacher";
 import Student from "./pages/Student";
 import NotFound from "./pages/NotFound";
+import { Toaster as ShadcnToaster } from "@/components/ui/toaster";
 
 const queryClient = new QueryClient();
 
@@ -28,6 +29,7 @@ const App = () => (
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
+        <ShadcnToaster />
       </TooltipProvider>
     </BrowserRouter>
   </QueryClientProvider>
