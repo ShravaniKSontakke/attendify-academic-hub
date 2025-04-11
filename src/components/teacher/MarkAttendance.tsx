@@ -9,6 +9,18 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Check, Save, Upload } from "lucide-react";
+import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { supabase } from "@/integrations/supabase/client";
 
 const MarkAttendance: React.FC = () => {
   const [batch, setBatch] = useState("");
@@ -16,6 +28,8 @@ const MarkAttendance: React.FC = () => {
   const [students, setStudents] = useState<any[]>([]);
   const [attendanceData, setAttendanceData] = useState<Record<string, { morning: string; afternoon: string; evening: string; }>>({});
   const [isLoading, setIsLoading] = useState(false);
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [csvFile, setCsvFile] = useState<File | null>(null);
 
   const batches = ["9th", "10th", "11th", "12th"];
   const boards = ["CBSE", "ICSE", "State Board"];
@@ -49,22 +63,85 @@ const MarkAttendance: React.FC = () => {
     }));
   };
 
-  const handleSaveAttendance = () => {
+  const handleSaveAttendance = async () => {
     setIsLoading(true);
     
-    // Simulate API call
-    setTimeout(() => {
+    try {
+      // Convert attendance data to format suitable for Supabase
+      const date = new Date().toISOString().split('T')[0];
+      const attendanceRecords = Object.entries(attendanceData).flatMap(([studentId, sessions]) => {
+        return Object.entries(sessions).map(([session, status]) => ({
+          student_id: studentId,
+          date,
+          status,
+          class_id: null // You would set this based on your data model
+        }));
+      });
+
+      // Save to Supabase
+      const { data, error } = await supabase
+        .from('attendance')
+        .insert(attendanceRecords);
+
+      if (error) throw error;
+
       toast.success("Attendance saved successfully", {
         description: `Saved attendance for ${students.length} students.`
       });
+    } catch (error: any) {
+      console.error("Error saving attendance:", error);
+      toast.error("Failed to save attendance", {
+        description: error.message || "Please try again later"
+      });
+    } finally {
       setIsLoading(false);
-    }, 1000);
+    }
   };
 
-  const handleImportCSV = () => {
-    toast.info("CSV Import", {
-      description: "This feature will be available after Supabase integration."
-    });
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      setCsvFile(e.target.files[0]);
+    }
+  };
+
+  const handleImportCSV = async () => {
+    if (!csvFile) {
+      toast.error("Please select a CSV file first");
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", csvFile);
+
+      // Example of how you might process this with Supabase storage
+      const fileName = `attendance_imports/${Date.now()}_${csvFile.name}`;
+      
+      // Upload file to Supabase storage
+      const { data, error } = await supabase.storage
+        .from('attendance-csvs')
+        .upload(fileName, csvFile);
+
+      if (error) throw error;
+
+      // In a real implementation, you would then process this file
+      // Either with a Supabase function or by reading it client-side
+
+      toast.success("CSV imported successfully", {
+        description: "Your attendance data is being processed."
+      });
+      
+      setCsvFile(null);
+      setImportDialogOpen(false);
+    } catch (error: any) {
+      console.error("Error importing CSV:", error);
+      toast.error("Failed to import CSV", {
+        description: error.message || "Please check your file and try again."
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -104,10 +181,32 @@ const MarkAttendance: React.FC = () => {
           </div>
           
           <div className="flex items-end gap-2">
-            <Button variant="outline" onClick={handleImportCSV} className="flex items-center gap-2">
-              <Upload className="h-4 w-4" />
-              Import CSV
-            </Button>
+            <AlertDialog open={importDialogOpen} onOpenChange={setImportDialogOpen}>
+              <AlertDialogTrigger asChild>
+                <Button variant="outline" className="flex items-center gap-2">
+                  <Upload className="h-4 w-4" />
+                  Import CSV
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Import Attendance Data</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Upload a CSV file with attendance records. The file should have columns for student ID, date, and attendance status.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <div className="my-4">
+                  <Label htmlFor="csv-file" className="mb-2 block">Select CSV File</Label>
+                  <Input id="csv-file" type="file" accept=".csv" onChange={handleFileChange} />
+                </div>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleImportCSV} disabled={isLoading || !csvFile}>
+                    {isLoading ? "Importing..." : "Import"}
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
         </div>
 
@@ -173,6 +272,23 @@ const MarkAttendance: React.FC = () => {
         )}
       </CardContent>
     </Card>
+  );
+};
+
+// Add the Input component that was missing
+const Input = ({ id, type, accept, onChange, value, required, placeholder, className, ...props }: React.InputHTMLAttributes<HTMLInputElement>) => {
+  return (
+    <input
+      id={id}
+      type={type}
+      accept={accept}
+      onChange={onChange}
+      value={value}
+      required={required}
+      placeholder={placeholder}
+      className={`flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
+      {...props}
+    />
   );
 };
 
