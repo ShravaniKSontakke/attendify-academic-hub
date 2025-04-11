@@ -13,13 +13,16 @@ const StudentDashboard: React.FC = () => {
   const { user, logout } = useAuth();
   const [activeTab, setActiveTab] = useState("attendance");
 
+  // Get user name from user metadata or default to "Student"
+  const userName = (user?.user_metadata?.name || user?.email?.split('@')[0] || "Student") as string;
+
   return (
     <div className="container mx-auto py-6 max-w-7xl">
       <div className="flex justify-between items-center mb-6">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Student Dashboard</h1>
           <p className="text-muted-foreground">
-            Welcome back, {user?.name}
+            Welcome back, {userName}
           </p>
         </div>
         <Button variant="outline" onClick={logout} className="flex items-center gap-2">

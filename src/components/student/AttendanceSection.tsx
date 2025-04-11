@@ -10,7 +10,7 @@ import { toast } from "sonner";
 interface AttendanceRecord {
   id: string;
   date: string;
-  status: 'present' | 'absent';
+  status: 'present' | 'absent' | string; // Added string to accommodate any other status values
   student_id: string;
 }
 
@@ -56,7 +56,7 @@ const AttendanceSection: React.FC = () => {
           const formattedData: AttendanceRecord[] = (data || []).map(record => ({
             id: record.id,
             date: record.date,
-            status: record.status,
+            status: record.status as AttendanceRecord['status'], // Type assertion to match our interface
             student_id: record.student_id
           }));
 
