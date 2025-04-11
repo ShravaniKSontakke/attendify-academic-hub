@@ -14,7 +14,7 @@ const StudentDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState("attendance");
 
   // Get user name from user metadata or default to "Student"
-  const userName = (user?.user_metadata?.name || user?.email?.split('@')[0] || "Student") as string;
+  const userName = user?.user_metadata?.name || user?.email?.split('@')[0] || "Student";
 
   return (
     <div className="container mx-auto py-6 max-w-7xl">
