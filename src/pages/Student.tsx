@@ -13,7 +13,7 @@ const Student: React.FC = () => {
   }
   
   // Redirect to teacher dashboard if user is a teacher
-  if (user?.role !== "student") {
+  if (user?.user_metadata?.role === "teacher") {
     return <Navigate to="/teacher" />;
   }
   
